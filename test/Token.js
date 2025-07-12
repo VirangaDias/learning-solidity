@@ -2,6 +2,7 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { loadFixture } = require("@nomicfoundation/hardhat-network-helpers");
 const { deployTokenFixture } = require("./helpers/TokenFixtures");
+const { ERRORS } = require("hardhat/internal/core/errors-list");
 
 const tokens = (n) => {
   return ethers.parseUnits(n.toString(), 18);
@@ -46,16 +47,48 @@ describe("Token Test Cases", function () {
   });
 
   describe("Sending Tokens", () => {
-    it("transfers token balances", async () => {
-      const AMOUNT = tokens(100);
-      const { token, deployer, receiver } = await loadFixture(deployTokenFixture);
+    const AMOUNT = tokens(100);
     
-      const transaction = await token.transfer(receiver.address, AMOUNT);
-      await transaction.wait();
-    
-      expect(await token.balanceof(deployer.address)).to.equal(tokens(999900));
-      expect(await token.balanceof(receiver.address)).to.equal(AMOUNT); 
-    });    
-  });
+    describe("Success",()=>{
+      it("transfers token balances", async () => {
+        const { token, deployer, receiver } = await loadFixture(deployTokenFixture);
+      
+        const transaction = await token.transfer(receiver.address, AMOUNT);
+        await transaction.wait();
+      
+        expect(await token.balanceof(deployer.address)).to.equal(tokens(999900));
+        expect(await token.balanceof(receiver.address)).to.equal(AMOUNT); 
+      });    
+      it("emits a tranfer event", async () => {
+        const { token, deployer, receiver } = await loadFixture(deployTokenFixture);
+      
+        const transaction = await token.connect(deployer).transfer(receiver.address,AMOUNT)
+        await transaction.wait();
+      
+        await expect(transaction).to.emit(token,"Transfer")
+          .withArgs(deployer.address,receiver.address,AMOUNT)
+      }); 
+    }); 
+    describe("Failure",()=>{
+      it("rejects insufficient balances", async () => {
+        const { token, deployer, receiver } = await loadFixture(deployTokenFixture);
+      
+        const INVALID_AMOUNT = tokens(100000000)
+        const ERROR = "Token:insuficient Funds"
+        await expect(token.connect(deployer).transfer(receiver.address,INVALID_AMOUNT))
+          .to.be.revertedWith(ERROR)
+      });   
+      
+      // it("rejects invalid recipient", async () => {
+      //   const { token, deployer, receiver } = await loadFixture(deployTokenFixture);
+      
+      //   const INVALID_ADDRESS = "0x0000000000000000000000000000000000000000"
+      //   const ERROR = "Token:Recipient address is 0"
+
+      //   await expect(token.connect(deployer).transfer(INVALID_ADDRESS,AMOUNT))
+      //     .to.be.revertedWith(ERROR)
+      // }); 
+    });
+  })
   
 });

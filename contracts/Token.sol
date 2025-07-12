@@ -18,8 +18,10 @@ contract Token {
         balanceof[msg.sender] = totalSupply;
     }
     function transfer (address _to,uint256 _value) public returns (bool successs){
-       balanceof[msg.sender] -= _value;
+       require(balanceof[msg.sender] >= _value,"Token:insuficient Funds");
+       require(_to != address(0),"Token: Recipient addres 0");
 
+        balanceof[msg.sender] -= _value;
         balanceof[_to] += _value;
         emit Transfer(msg.sender,_to,_value);
         
